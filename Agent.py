@@ -105,64 +105,59 @@ class HeuristicAgent:
         # Working memory (1 step)
         self.prev_action = None 
         self.banned_branch = None
+        self.escape_mode = 0  # Counter: how many more reverses to force
         
-        # Memory cost: 5 weights + 2 state variables
-        self.memory_bits = (5 * 32) + (2 * 32)
+        # Memory cost: 5 weights + 3 state variables
+        self.memory_bits = (5 * 32) + (3 * 32)
+    
+    def reset(self):
+        """Reset agent's internal state for new episode."""
+        self.prev_action = None
+        self.banned_branch = None
+        self.escape_mode = 0
 
     def choose_action(self, state, has_water, at_dead_end):
         """
         Choose action based on local heuristics.
         
         Priority order:
-        1. Whisker reflex: If at dead end → reverse
-        2. Homing: If carrying water → strong branch bias
-        3. Exploration: Standard biases
+        1. Whisker reflex: If at dead end → reverse (ALWAYS, even when homing)
+        2. Escape mode: If recently hit dead ends → strong reverse bias
+        3. Homing: If carrying water → always reverse  
+        4. Exploration: Standard biases
         """
         
-        # Priority 1: Whisker reflex
+        # Priority 1: Whisker reflex (MUST be first, even overrides homing)
         if at_dead_end:
             if self.prev_action is not None and self.prev_action < self.k:
                 self.banned_branch = self.prev_action
+            self.escape_mode = 2  # Set escape mode: reverse for next 2 steps
             self.prev_action = self.k
             return self.k
         
-        # Priority 2: Homing behavior
+        # Priority 2: Escape mode - keep reversing after hitting dead ends
+        if self.escape_mode > 0:
+            self.escape_mode -= 1
+            self.prev_action = self.k
+            return self.k
+        
+        # Priority 3: Homing behavior (only if NOT at dead end and not escaping)
         if has_water:
             return self._homing_action()
         
-        # Priority 3: Exploration
+        # Priority 4: Exploration
         return self._exploration_action()
     
     def _homing_action(self):
         """
-        Homing strategy: STRONG preference for branches over straight.
-        Implements one-shot homing by preferring turns.
+        Homing strategy: Always reverse to go home.
+        
+        In a tree structure, the path to root is always through the parent.
+        No need for probabilistic sampling - just go up the tree.
         """
-        logits = np.zeros(self.total_actions)
-        
-        # Base forward bias
-        for i in range(self.k):
-            logits[i] += self.w_forward
-        
-        # STRONG branch bias
-        if self.k == 2:
-            logits[1] += self.w_branch_home   # Branch: huge boost
-            logits[0] -= self.w_branch_home   # Straight: huge penalty
-        else:
-            # k-ary: prefer peripheral branches
-            for i in range(self.k):
-                branch_weight = self.w_branch_home * (i / (self.k - 1))
-                logits[i] += branch_weight
-        
-        # Softmax selection
-        exp_logits = np.exp(logits)
-        probs = exp_logits / np.sum(exp_logits)
-        
-        action = np.random.choice(np.arange(self.total_actions), p=probs)
-        self.prev_action = action
+        self.prev_action = self.k  # Reverse action
         self.banned_branch = None
-        
-        return action
+        return self.k  # Always reverse when homing
     
     def _exploration_action(self):
         """
@@ -187,16 +182,15 @@ class HeuristicAgent:
         if self.prev_action is not None:
             # Alternation bias (P_SA ≈ 0.72)
             if self.prev_action < self.k:
-                self.banned_branch = None
                 for i in range(self.k):
                     if i != self.prev_action:
                         logits[i] += self.w_alternating
-            # Outward bias
+            # Outward bias (prefer forward after reverse)
             elif self.prev_action == self.k:
                 for i in range(self.k):
                     logits[i] += self.w_outward
         
-        # Working memory penalty
+        # Working memory penalty - prevents revisiting dead ends
         if self.banned_branch is not None:
             logits[self.banned_branch] -= 100.0
         
@@ -206,6 +200,11 @@ class HeuristicAgent:
         
         action = np.random.choice(np.arange(self.total_actions), p=probs)
         self.prev_action = action
+        
+        # Clear banned branch and escape mode if successfully going forward
+        if action < self.k:
+            self.banned_branch = None
+            self.escape_mode = 0
         
         return action
 # =============================================================================

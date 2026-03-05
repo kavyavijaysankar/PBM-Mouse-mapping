@@ -78,7 +78,7 @@ def experiment_1_time_comparison(env, max_training_episodes=1000,
         done = False
         episode_steps = 0
         
-        while not done and episode_steps < 500:
+        while not done and episode_steps < 3000:
             action = map_agent.choose_action(obs)
             next_obs, reward, done, truncated, info = env.step(action)
             map_agent.learn(obs, action, reward, next_obs, done)
@@ -120,7 +120,7 @@ def experiment_1_time_comparison(env, max_training_episodes=1000,
         done = False
         steps = 0
         
-        while not done and steps < 500:
+        while not done and steps < 3000:
             action = map_agent.choose_action(obs)
             obs, reward, done, truncated, info = env.step(action)
             steps += 1
@@ -153,10 +153,11 @@ def experiment_1_time_comparison(env, max_training_episodes=1000,
     
     for trial in range(50):
         obs, info = env.reset(seed=1000 + trial)
+        heur_agent.reset()  # Reset agent's internal state for new episode
         done = False
         steps = 0
         
-        while not done and steps < 500:
+        while not done and steps < 3000:  # Increased: heuristic needs more steps to find goal
             action = heur_agent.choose_action(obs, info['has_water'], 
                                              info['at_dead_end'])
             obs, reward, done, truncated, info = env.step(action)
@@ -478,7 +479,7 @@ def experiment_4_stopping_criterion_sensitivity(verbose=True):
             done = False
             episode_steps = 0
             
-            while not done and episode_steps < 500:
+            while not done and episode_steps < 3000:
                 action = map_agent.choose_action(obs)
                 next_obs, reward, done, truncated, info = env.step(action)
                 map_agent.learn(obs, action, reward, next_obs, done)
@@ -492,7 +493,7 @@ def experiment_4_stopping_criterion_sensitivity(verbose=True):
             obs, info = env.reset(seed=1000 + trial)
             done = False
             steps = 0
-            while not done and steps < 500:
+            while not done and steps < 3000:
                 action = map_agent.choose_action(obs)
                 obs, reward, done, truncated, info = env.step(action)
                 steps += 1
