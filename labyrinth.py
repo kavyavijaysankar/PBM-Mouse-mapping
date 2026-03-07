@@ -1,6 +1,5 @@
 import gymnasium as gym
 from gymnasium import spaces
-import numpy as np
 
 class LabyrinthEnv(gym.Env):
     def __init__(self, k=2, depth=6, goal_node=None):

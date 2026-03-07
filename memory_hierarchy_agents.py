@@ -9,10 +9,8 @@ This module implements three agents with increasing memory capacity:
 
 import numpy as np
 
-
-# =============================================================================
 # LEVEL 0: PURE REACTIVE AGENT (No Spatial Memory)
-# =============================================================================
+
 
 class ReactiveAgent:
     """
@@ -112,15 +110,11 @@ class ReactiveAgent:
         return action
 
 
-# =============================================================================
 # LEVEL 1: MINIMAL MEMORY AGENT (Visited Nodes)
-# =============================================================================
 
 class MinimalMemoryAgent(ReactiveAgent):
     """
     Agent with minimal spatial memory: remembers visited nodes.
-    
-    Memory: ~4,000-8,000 bits (visited node set)
     - Remembers which areas have been explored
     - Enables systematic coverage
     - Still uses local heuristics
@@ -213,12 +207,11 @@ class MinimalMemoryAgent(ReactiveAgent):
             logits[1] += self.w_branch_explore
             logits[0] -= self.w_branch_explore
         
-        # Novelty bonus: prefer less-visited areas (GENTLE penalty)
+        # Novelty bonus: prefer less-visited areas
         for i in range(self.k):
             next_node = self.k * current_node + i + 1
             if next_node < 127:  # Valid node
                 visit_count = self.visit_counts.get(next_node, 0)
-                # GENTLE penalty - don't make it impossible to revisit
                 # Use logarithmic penalty to avoid over-penalizing
                 if visit_count > 0:
                     logits[i] -= 0.5 * np.log(visit_count + 1)
@@ -251,9 +244,9 @@ class MinimalMemoryAgent(ReactiveAgent):
         return action
 
 
-# =============================================================================
+
 # LEVEL 2: FULL MEMORY AGENT (Q-Learning)
-# =============================================================================
+
 
 class FullMemoryAgent:
     """
@@ -303,9 +296,9 @@ class FullMemoryAgent:
             self.epsilon = max(self.min_epsilon, self.epsilon * self.epsilon_decay)
 
 
-# =============================================================================
+
 # USAGE SUMMARY
-# =============================================================================
+
 
 if __name__ == "__main__":
     print("="*70)
